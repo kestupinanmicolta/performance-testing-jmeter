@@ -36,20 +36,48 @@ jobs:
           mkdir -p results
           for plan in test-plans/*.jmx; do
             name=$(basename "$plan" .jmx)
+            rm -rf "results/${name}-report"
             jmeter -n -t "$plan" -l "results/${name}.jtl" -e -o "results/${name}-report" || true
           done
-      - name: Create report
+      - name: Prepare report
         if: always()
         run: |
           mkdir -p public
-          # Find any generated report
+          # Copy all JMeter HTML reports
+          report_count=0
           for dir in results/*-report; do
             if [ -d "$dir" ] && [ -f "$dir/index.html" ]; then
-              cp -r "$dir"/* public/
-              break
+              if [ "$report_count" -eq 0 ]; then
+                cp -r "$dir"/* public/
+              else
+                mkdir -p "public/${name}"
+                cp -r "$dir"/* "public/${name}/"
+              fi
+              report_count=$((report_count + 1))
             fi
           done
-          if [ ! -f public/index.html ]; then
+          # If we have multiple reports, create an index page
+          if [ "$report_count" -gt 1 ]; then
+            cat > public/index.html << 'EOF'
+            <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>JMeter Reports</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+            <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b}.header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;padding:2rem;text-align:center}.header h1{font-size:1.5rem}.header p{color:#60a5fa}.container{max-width:800px;margin:2rem auto;padding:0 1rem}.card{background:white;border-radius:12px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 2px 8px rgba(0,0,0,.08)}.card h2{font-size:1rem;margin-bottom:.75rem;color:#0f172a}.report-list{list-style:none}.report-list li{padding:.5rem 0;border-bottom:1px solid #e2e8f0}.report-list li a{color:#3b82f6;text-decoration:none;font-weight:600}.report-list li a:hover{text-decoration:underline}.btn{display:inline-flex;align-items:center;gap:.5rem;background:#0f172a;color:white;padding:.6rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:.85rem;margin-top:.5rem}.footer{text-align:center;padding:1.5rem;font-size:.75rem;color:#94a3b8}</style></head>
+            <body>
+            <div class="header"><h1><i class="fas fa-tachometer-alt"></i> JMeter Performance Reports</h1><p>Load Test Dashboard</p></div>
+            <div class="container">
+            <div class="card"><h2><i class="fas fa-chart-bar"></i> Available Reports</h2>
+            <ul class="report-list" id="report-list"></ul></div>
+            <a href="https://github.com/kestupinanmicolta/performance-testing-jmeter" class="btn"><i class="fab fa-github"></i> View Source Code</a>
+            </div><div class="footer">2026 Karen Paola Estupinan Micolta</div>
+            <script>
+            var list=document.getElementById('report-list');
+            var dirs=window.location.hash.substring(1).split(',');
+            dirs.forEach(function(d){if(d){var li=document.createElement('li');li.innerHTML='<a href="'+d+'/index.html"><i class="fas fa-file-alt"></i> '+d.replace('-report','').replace(/-/g,' ')+'</a>';list.appendChild(li);}});
+            </script>
+            </body></html>
+            EOF
+          elif [ ! -f public/index.html ]; then
             cat > public/index.html << 'EOF'
             <!DOCTYPE html><html><head><meta charset="UTF-8"><title>JMeter Report</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
