@@ -75,3 +75,5 @@ performance-testing-jmeter/
 - Error Rate
 - Latency
 - Connect Time
+
+<!-- lastupdate: 2026-08-18 21:18 -->
